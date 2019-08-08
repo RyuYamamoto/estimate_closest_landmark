@@ -61,7 +61,6 @@ class Visualize:
             x, y, _, _, _, yaw = landmark_list[id]
             pose = [x,y,yaw]
             self.draw_coordinate(pose)
-            self.draw_circle(x,y)
 
 class EstimateLandmark:
     def __init__(self):
@@ -76,8 +75,9 @@ class EstimateLandmark:
     # TODO
     # ロボット、ランドマークそれぞれのベクトル向きを計算し、それらのなす角度の誤差を計算し一番誤差が少ないものを選択する？
     def get_closest_landmark(self, robot_pose, landmark):
-        side_range = [-almath.PI/3, almath.PI/3]
-        not_move_list = list()
+        side_range = [-math.radians(70), math.radians(70)]
+        min_distance = 100
+        min_landmark_id = -1
         for id in landmark:
             # calculate angle robot to landmark
             # マップ原点座標から見たランドマークの位置・姿勢
@@ -91,6 +91,18 @@ class EstimateLandmark:
             robot2landmark = almath.position6DFromTransform(t_robot2landmark)
             print(id, robot2landmark, robot2landmark.norm())
 
+            local_vector = almath.position6DFromPose2D(almath.Pose2D(1.0, 0, 0))
+            # ロボットとランドマークのなす角度を計算する
+            a = local_vector.x*robot2landmark.x
+            b = math.sqrt(local_vector.x*local_vector.x)*math.sqrt(robot2landmark.x*robot2landmark.x+robot2landmark.y*robot2landmark.y)
+            local_angle = math.acos(a/b)
+            if side_range[0] < local_angle < side_range[1]:
+                if robot2landmark.norm() < min_distance:
+                    min_distance = robot2landmark.norm()
+                    min_landmark_id = id
+            print(math.degrees(local_angle))
+        return min_landmark_id
+
 def load_landmark():
     txt = open("map.yaml", "r")
     marker_list = yaml.load(txt)
@@ -103,11 +115,16 @@ if __name__ == "__main__":
     marker_list = list()
     marker_list = load_landmark()
 
-    initial_robot_pose = almath.Pose2D(1,0,0)
+    initial_robot_pose = almath.Pose2D(1,0,-almath.PI/2)
 
-    estimate.get_closest_landmark(initial_robot_pose, marker_list)
 
-    visualize.config_screen()
-    visualize.draw_landmark(marker_list)
-    visualize.move_robot(initial_robot_pose.toVector())
-    plt.show()
+    while True:
+        initial_robot_pose.theta = initial_robot_pose.theta + 0.05
+        closest_landmark_id = estimate.get_closest_landmark(initial_robot_pose, marker_list)
+
+        visualize.config_screen()
+        visualize.draw_circle(marker_list[closest_landmark_id][0], marker_list[closest_landmark_id][1])
+        visualize.draw_landmark(marker_list)
+        visualize.move_robot(initial_robot_pose.toVector())
+
+        plt.pause(0.01)
