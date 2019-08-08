@@ -92,15 +92,20 @@ class EstimateLandmark:
             print(id, robot2landmark, robot2landmark.norm())
 
             local_vector = almath.position6DFromPose2D(almath.Pose2D(1.0, 0, 0))
-            # ロボットとランドマークのなす角度を計算する
+            # ロボットとランドマークのなす角度を計算する(x,y平面)
             a = local_vector.x*robot2landmark.x
             b = math.sqrt(local_vector.x*local_vector.x)*math.sqrt(robot2landmark.x*robot2landmark.x+robot2landmark.y*robot2landmark.y)
-            local_angle = math.acos(a/b)
-            if side_range[0] < local_angle < side_range[1]:
+            local_angle_xy = math.acos(a/b)
+
+            a1 = local_vector.x*robot2landmark.x
+            b1 = math.sqrt(local_vector.x*local_vector.x)*math.sqrt(robot2landmark.x*robot2landmark.x+robot2landmark.z*robot2landmark.z)
+            local_angle_xz = math.acos(a1/b1)
+
+            if (side_range[0] < local_angle_xy < side_range[1]) and (side_range[0] < local_angle_xz < side_range[1]):
                 if robot2landmark.norm() < min_distance:
                     min_distance = robot2landmark.norm()
                     min_landmark_id = id
-            print(math.degrees(local_angle))
+            print(math.degrees(local_angle_xy))
         return min_landmark_id
 
 def load_landmark():
@@ -115,15 +120,14 @@ if __name__ == "__main__":
     marker_list = list()
     marker_list = load_landmark()
 
-    initial_robot_pose = almath.Pose2D(1,0,-almath.PI/2)
-
-
+    initial_robot_pose = almath.Pose2D(2,0,-almath.PI/2)
     while True:
         initial_robot_pose.theta = initial_robot_pose.theta + 0.05
         closest_landmark_id = estimate.get_closest_landmark(initial_robot_pose, marker_list)
 
         visualize.config_screen()
-        visualize.draw_circle(marker_list[closest_landmark_id][0], marker_list[closest_landmark_id][1])
+        if closest_landmark_id != -1:
+            visualize.draw_circle(marker_list[closest_landmark_id][0], marker_list[closest_landmark_id][1])
         visualize.draw_landmark(marker_list)
         visualize.move_robot(initial_robot_pose.toVector())
 
