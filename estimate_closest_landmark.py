@@ -73,20 +73,23 @@ class EstimateLandmark:
     # 2. 1で存在する場合はその中から一番距離が近いランドマークを計算し取得
     #    存在しなかった場合は全ランドマークに対して距離を計算し一番距離が近いランドマークを返す
     #    (※)その中でも動く必要がある場合はなるべく移動量の少なくて済むランドマークを推定したい
+    # TODO
+    # ロボット、ランドマークそれぞれのベクトル向きを計算し、それらのなす角度の誤差を計算し一番誤差が少ないものを選択する？
     def get_closest_landmark(self, robot_pose, landmark):
         side_range = [-almath.PI/3, almath.PI/3]
         not_move_list = list()
         for id in landmark:
             # calculate angle robot to landmark
+            # マップ原点座標から見たランドマークの位置・姿勢
             map2landmark = almath.Position6D(landmark[id])
             t_map2landmark = almath.transformFromPosition6D(map2landmark)
-
-            map2robot = almath.Position6D(robot_pose)
-            t_map2robot = almath.transformFromPose2D(robot_pose)
-
+            # map原点座標から見たロボットの位置・姿勢
+            map2robot = almath.position6DFromPose2D(robot_pose)
+            t_map2robot = almath.transformFromPosition6D(map2robot)
             # ロボットから見たランドマークの位置・姿勢
             t_robot2landmark = t_map2robot.inverse() * t_map2landmark
-            robot2landmark = almath.pose2DFromPosition6D(t_robot2landmark)
+            robot2landmark = almath.position6DFromTransform(t_robot2landmark)
+            print(id, robot2landmark, robot2landmark.norm())
 
 def load_landmark():
     txt = open("map.yaml", "r")
@@ -95,11 +98,14 @@ def load_landmark():
 
 if __name__ == "__main__":
     visualize = Visualize()
+    estimate = EstimateLandmark()
 
     marker_list = list()
     marker_list = load_landmark()
 
     initial_robot_pose = almath.Pose2D(1,0,0)
+
+    estimate.get_closest_landmark(initial_robot_pose, marker_list)
 
     visualize.config_screen()
     visualize.draw_landmark(marker_list)
